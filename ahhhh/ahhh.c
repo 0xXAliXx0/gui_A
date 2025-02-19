@@ -1,21 +1,73 @@
 
 #define GLFW_INCLUDE_NONE  // Prevent GLFW from including OpenGL headers
-#include "/home/ali/ahhhh/glad/include/glad/glad.h"    // Include glad header after GLFW
+#include "/home/ali/git_proj/gui_A/ahhhh/glad/include/glad/glad.h"    // Include glad header after GLFW
 #include <GLFW/glfw3.h>  // Include GLFW header first
 #include <stdio.h>   // Include stdio.h for printf
 #include <stdbool.h>
 #include <stdlib.h>
 #include "shader_utils.h"
 
+ float vertices[] = {
+         0.45f,  -0.9f, 0.0f,  // top right
+         0.45f, -0.95f, 0.0f,  // bottom right
+        -0.5f, -0.95f, 0.0f,  // bottom left
+        -0.5f,  -0.9f, 0.0f   // top left
+    };
+
+    // Define index data
+    GLuint indices[] = {
+        0, 1, 3,   // first triangle
+        1, 2, 3    // second triangle
+    };
+
+
 // Function to handle window resizing
 void frame_size(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
 }
-//hi hansome  ahhhh
+
 // Function to handle keyboard input
 void processInput(GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+}
+
+
+int is_point_in_triangle(float px, float py, float vertices[]) {
+    // Extract triangle vertices (first 3 points from the array)
+    float x1 = vertices[0], y1 = vertices[1];
+    float x2 = vertices[3], y2 = vertices[4];
+    float x3 = vertices[6], y3 = vertices[7];
+    float x3 = vertices[9], y3 = vertices[10]
+
+    // Barycentric coordinate check
+    float denominator = ((y2 - y3)*(x1 - x3) + (x3 - x2)*(y1 - y3));
+    float a = ((y2 - y3)*(px - x3) + (x3 - x2)*(py - y3)) / denominator;
+    float b = ((y3 - y1)*(px - x3) + (x1 - x3)*(py - y3)) / denominator;
+    float c = 1.0f - a - b;
+
+    return (a >= 0 && a <= 1 && b >= 0 && b <= 1 && c >= 0);
+}
+
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        double xpos, ypos;
+        glfwGetCursorPos(window, &xpos, &ypos);
+
+        // Get window size
+        int width, height;
+        glfwGetWindowSize(window, &width, &height);
+
+        // Convert to NDC [-1, 1]
+        float mouseX = (xpos / width) * 2.0f - 1.0f;
+        float mouseY = 1.0f - (ypos / height) * 2.0f;
+
+        // Check if the click is inside the triangle
+        if (is_point_in_triangle(mouseX, mouseY, vertices)) {
+            printf("Button clicked!\n");
+            // Trigger your button action here
+        }
+    }
 }
 
 int main() {
@@ -37,6 +89,9 @@ int main() {
         glfwTerminate();
         return -1;
     }
+ // Define vertex data
+   
+  glfwSetMouseButtonCallback(window, mouse_button_callback);
 
     // Make the window's context current
     glfwMakeContextCurrent(window);
@@ -51,20 +106,7 @@ int main() {
     glViewport(0, 0, 800, 600);
     glfwSetFramebufferSizeCallback(window, frame_size);
 
-    // Define vertex data
-    float vertices[] = {
-         1,  1, 0.0f,  // top right
-         1, -1, 0.0f,  // bottom right
-        -1, -1, 0.0f,  // bottom left
-        -1,  1, 0.0f   // top left
-    };
-
-    // Define index data
-    GLuint indices[] = {
-        0, 1, 3,   // first triangle
-        1, 2, 3    // second triangle
-    };
-
+   
     // Load shaders from files
     char* vertexShaderSource = loadShaderFile("shaders/vertex.glsl");
     char* fragmentShaderSource = loadShaderFile("shaders/fragment.glsl");
