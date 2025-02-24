@@ -1,12 +1,11 @@
-
-#define GLFW_INCLUDE_NONE  // Prevent GLFW from including OpenGL headers
+#include </home/ali/SDL/include/SDL.h>
 #include "/home/ali/git_proj/gui_A/ahhhh/glad/include/glad/glad.h"    // Include glad header after GLFW
-#include <GLFW/glfw3.h>  // Include GLFW header first
 #include <stdio.h>   // Include stdio.h for printf
 #include <stdbool.h>
 #include <stdlib.h>
 #include "shader_utils.h"
 
+//#include <SDL_mixer.h>
  float vertices[] = {
          0.45f,  -0.9f, 0.0f,  // top right
          0.45f, -0.95f, 0.0f,  // bottom right
@@ -22,92 +21,51 @@
 
 
 // Function to handle window resizing
-void frame_size(GLFWwindow* window, int width, int height) {
-    glViewport(0, 0, width, height);
-}
-
 // Function to handle keyboard input
-void processInput(GLFWwindow *window) {
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
-}
 
 
-int is_point_in_triangle(float px, float py, float vertices[]) {
-    // Extract triangle vertices (first 3 points from the array)
-    float x1 = vertices[0], y1 = vertices[1];
-    float x2 = vertices[3], y2 = vertices[4];
-    float x3 = vertices[6], y3 = vertices[7];
-    float x3 = vertices[9], y3 = vertices[10]
 
-    // Barycentric coordinate check
-    float denominator = ((y2 - y3)*(x1 - x3) + (x3 - x2)*(y1 - y3));
-    float a = ((y2 - y3)*(px - x3) + (x3 - x2)*(py - y3)) / denominator;
-    float b = ((y3 - y1)*(px - x3) + (x1 - x3)*(py - y3)) / denominator;
-    float c = 1.0f - a - b;
-
-    return (a >= 0 && a <= 1 && b >= 0 && b <= 1 && c >= 0);
-}
-
-void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
-    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
-        double xpos, ypos;
-        glfwGetCursorPos(window, &xpos, &ypos);
-
-        // Get window size
-        int width, height;
-        glfwGetWindowSize(window, &width, &height);
-
-        // Convert to NDC [-1, 1]
-        float mouseX = (xpos / width) * 2.0f - 1.0f;
-        float mouseY = 1.0f - (ypos / height) * 2.0f;
-
-        // Check if the click is inside the triangle
-        if (is_point_in_triangle(mouseX, mouseY, vertices)) {
-            printf("Button clicked!\n");
-            // Trigger your button action here
-        }
-    }
-}
-
-int main() {
-    // Initialize GLFW
-    if (!glfwInit()) {
-        printf("Failed to initialize GLFW\n");
+int main(int argc, char *argv[]) {
+    
+    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+        printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
         return -1;
     }
-
     // Set OpenGL version and profile
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-    // Create a window
-    GLFWwindow* window = glfwCreateWindow(800, 600, "OpenGL", NULL, NULL);
-    if (!window) {
-        printf("Failed to create GLFW window\n");
-        glfwTerminate();
+ 
+    // Set OpenGL attributes
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3); // OpenGL 3.3
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE); // Core profile
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1); // Enable double buffering
+     // Create an SDL window
+    SDL_Window *window = SDL_CreateWindow(
+        "OpenGL with SDL",                  // Window title
+        SDL_WINDOWPOS_CENTERED,             // X position
+        SDL_WINDOWPOS_CENTERED,             // Y position
+        800, 600,                           // Width, Height
+        SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN // Flags (OpenGL + visible)
+    ); // Define vertex data
+       if (!window) {
+        printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
+        SDL_Quit();
         return -1;
     }
- // Define vertex data
-   
-  glfwSetMouseButtonCallback(window, mouse_button_callback);
-
-    // Make the window's context current
-    glfwMakeContextCurrent(window);
-
+      SDL_GLContext glContext = SDL_GL_CreateContext(window); // Declare this
     // Initialize GLAD
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+    if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress)) {
         printf("Failed to initialize OpenGL loader\n");
-        return -1;
-    }
+        SDL_GL_DeleteContext(glContext);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return -1;    }
 
     // Set the viewport and resize callback
     glViewport(0, 0, 800, 600);
-    glfwSetFramebufferSizeCallback(window, frame_size);
+ 
 
-   
-    // Load shaders from files
+       // Main loop flag
+      // Load shaders from files
     char* vertexShaderSource = loadShaderFile("shaders/vertex.glsl");
     char* fragmentShaderSource = loadShaderFile("shaders/fragment.glsl");
 
@@ -115,7 +73,7 @@ int main() {
         printf("Failed to load shader files\n");
         if (vertexShaderSource) free(vertexShaderSource);
         if (fragmentShaderSource) free(fragmentShaderSource);
-        glfwTerminate();
+        SDL_Quit();
         return -1;
     }
 
@@ -165,34 +123,9 @@ int main() {
     // Free shader source memory
     free(vertexShaderSource);
     free(fragmentShaderSource);
-
-    // Get window size and set uniform (after linking shader program)
-    int windowWidth, windowHeight;
-    glfwGetWindowSize(window, &windowWidth, &windowHeight);
-    
-    // Get the location of the uniform in the shader program
-    GLuint resolutionLoc = glGetUniformLocation(shaderProgram, "u_resolution");
-
     // Set the uniform value (after the shader program is linked)
     glUseProgram(shaderProgram);
-    glUniform2f(resolutionLoc, (float)windowWidth, (float)windowHeight);
-
-    // Inside the render loop or update loop
-    float currentTime = glfwGetTime();  // Get the current time in seconds (since GLFW was initialized)
-    GLuint timeLocation = glGetUniformLocation(shaderProgram, "u_time");  // Get the location of the 'u_time' uniform
-    glUniform1f(timeLocation, currentTime);  // Set the value of 'u_time' to the current time
-     if (timeLocation == -1) {
-        fprintf(stderr, "Warning: 'u_time' uniform not found in shader.\n");
-      }
-
-     
-    GLint u_mouse_loc = glGetUniformLocation(shaderProgram, "u_mouse");
-      if (u_mouse_loc == -1) {
-        fprintf(stderr, "Warning: 'u_mouse' uniform not found in shader.\n");
-      }//I think error because the variable is not used
-
-
-    // Create VAO, VBO, and EBO
+ 
     GLuint VAO, VBO, EBO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
@@ -218,38 +151,35 @@ int main() {
     glBindVertexArray(0);
 
     // Main loop
-    while (!glfwWindowShouldClose(window)) {
-        // Input handling
-        processInput(window);
-
-        // Clear the screen
+     // Main loop
+    int running = 1;
+    SDL_Event event;
+    while (running) {
+        // Handle events
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                running = 0;
+            }
+        }        // Clear the screen
         glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
-        // Inside your render loop:
-double xpos, ypos;
-glfwGetCursorPos(window, &xpos, &ypos); // Get mouse position
-
-// Optional: Normalize coordinates to [0, 1] range
-int width, height;
-glfwGetWindowSize(window, &width, &height);
-float mx = (float)xpos / width;
-float my = 1.0f - (float)ypos / height; // Flip Y if needed
-
-// Update the uniform
-glUseProgram(shaderProgram); // Ensure the shader is active
-glUniform2f(u_mouse_loc, mx, my);
-
-        // Use the shader program
-      //  glUseProgram(shaderProgram);
 
         // Bind VAO and draw
+        glUseProgram(shaderProgram); // Ensure the shader is active
+
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
         // Swap buffers and poll events
-        glfwSwapBuffers(window);
-        glfwPollEvents();
-    }
+      SDL_GL_SwapWindow(window);
+
+
+
+
+
+
+}
+
 
     // Cleanup
     glDeleteVertexArrays(1, &VAO);
@@ -257,8 +187,10 @@ glUniform2f(u_mouse_loc, mx, my);
     glDeleteBuffers(1, &EBO);
     glDeleteProgram(shaderProgram);
 
-    // Terminate GLFW
-    glfwTerminate();
-    return 0;
-}
+      // Clean up
+    SDL_GL_DeleteContext(glContext);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+
+    return 0;}
 
